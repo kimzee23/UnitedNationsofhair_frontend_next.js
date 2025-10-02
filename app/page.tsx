@@ -8,23 +8,30 @@ import { Input } from "@/components/ui/input"
 import { DashboardNav } from "@/components/dashboard-nav"
 import { useAuth } from "@/contexts/auth-context"
 import {
-  Search,
-  ShoppingBag,
-  User,
-  Menu,
-  X,
-  Star,
-  ArrowRight,
-  Scissors,
-  Sparkles,
-  Users,
-  Award,
-  Heart,
-  MapPin,
-  Clock,
+    Search,
+    ShoppingBag,
+    User,
+    Menu,
+    X,
+    Star,
+    ArrowRight,
+    Scissors,
+    Sparkles,
+    Users,
+    Award,
+    Heart,
+    MapPin,
+    Clock,
 } from "lucide-react"
 import { AuthModal } from "@/components/auth-modal"
 import Link from "next/link"
+import { Swiper, SwiperSlide } from "swiper/react"
+import { Autoplay, Pagination, EffectFade } from "swiper/modules"
+import "swiper/css"
+import "swiper/css/pagination"
+import "swiper/css/effect-fade"
+
+
 
 export default function HomePage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -35,22 +42,65 @@ export default function HomePage() {
 
   const { user, isAuthenticated } = useAuth()
 
-  useEffect(() => {
-    // Simulate cart count from localStorage
-    const savedCart = localStorage.getItem("cart")
-    if (savedCart) {
-      const cart = JSON.parse(savedCart)
-      setCartCount(cart.length || 0)
-    }
-  }, [])
+    useEffect(() => {
+        const loadCart = async () => {
+            try {
+                if (isAuthenticated) {
+                    // logged in → fetch from backend
+                    const res = await fetch("/api/v1/cart", { credentials: "include" })
+                    if (res.ok) {
+                        const data = await res.json()
+                        setCartCount(data.items?.length || 0)
+                        // sync localStorage copy
+                        localStorage.setItem("cart", JSON.stringify(data.items || []))
+                    }
+                } else {
+                    // guest → fallback to localStorage
+                    const savedCart = localStorage.getItem("cart")
+                    if (savedCart) {
+                        const cart = JSON.parse(savedCart)
+                        setCartCount(cart.length || 0)
+                    }
+                }
+            } catch (err) {
+                console.error("Error loading cart:", err)
+            }
+        }
 
-  const addToCart = (product: any) => {
-    const savedCart = localStorage.getItem("cart")
-    const cart = savedCart ? JSON.parse(savedCart) : []
-    cart.push(product)
-    localStorage.setItem("cart", JSON.stringify(cart))
-    setCartCount(cart.length)
-  }
+        loadCart()
+    }, [isAuthenticated])
+
+
+    const addToCart = async (product: any) => {
+        // always update localStorage first (fast UI feedback)
+        const savedCart = localStorage.getItem("cart")
+        const cart = savedCart ? JSON.parse(savedCart) : []
+
+        // check if product already exists
+        const existing = cart.find((item: any) => item.id === product.id)
+        if (existing) {
+            existing.quantity += 1
+        } else {
+            cart.push({ ...product, quantity: 1 })
+        }
+
+        localStorage.setItem("cart", JSON.stringify(cart))
+        setCartCount(cart.length)
+
+        // if user is logged in → sync with backend
+        if (isAuthenticated) {
+            try {
+                await fetch("/api/v1/cart", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ productId: product.id, quantity: 1 }),
+                    credentials: "include",
+                })
+            } catch (err) {
+                console.error("Error syncing with backend:", err)
+            }
+        }
+    }
 
   const featuredProducts = [
     {
@@ -137,14 +187,16 @@ export default function HomePage() {
                 <Search className="w-4 h-4" />
               </Button>
 
-              <Button variant="ghost" size="sm" className="relative">
-                <ShoppingBag className="w-4 h-4" />
-                {cartCount > 0 && (
-                  <Badge className="absolute -top-2 -right-2 w-5 h-5 flex items-center justify-center p-0 text-xs">
-                    {cartCount}
-                  </Badge>
-                )}
-              </Button>
+                <Link href="/cart">
+                    <Button variant="ghost" size="sm" className="relative">
+                        <ShoppingBag className="w-4 h-4" />
+                        {cartCount > 0 && (
+                            <Badge className="absolute -top-2 -right-2 w-5 h-5 flex items-center justify-center p-0 text-xs">
+                                {cartCount}
+                            </Badge>
+                        )}
+                    </Button>
+                </Link>
 
               {isAuthenticated ? (
                 <DashboardNav />
@@ -190,52 +242,91 @@ export default function HomePage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="hero-gradient pt-24 pb-16 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div className="fade-in">
-              <Badge className="mb-6 bg-primary/20 text-primary border-primary/30">Premium Hair Care Platform</Badge>
-              <h1 className="text-4xl md:text-6xl font-bold mb-6 text-balance">
-                The complete platform for
-                <span className="text-gradient"> beautiful hair</span>
-              </h1>
-              <p className="text-xl text-muted-foreground mb-8 text-pretty">
-                Discover premium products, expert salon services, and professional tutorials designed for every hair
-                type and texture. Your journey to healthier, more beautiful hair starts here.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Link href="/products">
-                  <Button size="lg" className="bg-primary hover:bg-primary/90 w-full sm:w-auto">
-                    Shop Products
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
-                </Link>
-                <Link href="/salons">
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="border-primary/30 hover:bg-primary/10 w-full sm:w-auto bg-transparent"
-                  >
-                    Find Salons
-                    <MapPin className="w-4 h-4 ml-2" />
-                  </Button>
-                </Link>
-              </div>
-            </div>
+        <section className="pt-24 pb-16">
+            <Swiper
+                modules={[Autoplay, Pagination, EffectFade]}
+                autoplay={{ delay: 4000 }}
+                loop
+                pagination={{ clickable: true }}
+                effect="fade"
+                className="w-full h-[80vh] rounded-2xl shadow-2xl"
+            >
+                {[
+                    {
+                        id: 1,
+                        src: "/human-hair.jpg",
+                        title: "Beautiful Hair for Everyone",
+                        desc: "Discover premium products tailored for every texture.",
+                    },
+                    {
+                        id: 2,
+                        src: "/luxury-hair-salon.png",
+                        title: "Top Rated Salons Near You",
+                        desc: "Book appointments with trusted professionals.",
+                    },
+                    {
+                        id: 3,
+                        src: "/premium-hair-mask-treatment.jpg",
+                        title: "Transform Your Hair Routine",
+                        desc: "Shop luxury treatments loved by thousands.",
+                    },
+                    {
+                        id: 4,
+                        src: "/hair-products.jpg",
+                        title: "Best hair treatment",
+                        desc: "Restores, strengthens, and nourishes hair for a soft, shiny, and healthy look."
+                    },
+                    {
+                        id: 4,
+                        src: "/hair-tools.jpeg",
+                        title: "Kits",
+                        desc: ""
+                    }
+                ].map((slide) => (
+                    <SwiperSlide key={slide.id}>
+                        <div className="relative w-full h-full">
+                            {/* Background Image */}
+                            <img
+                                src={slide.src}
+                                alt={slide.title}
+                                className="w-full h-full object-cover rounded-2xl"
+                            />
+                            {/* Overlay */}
+                            <div className="absolute inset-0 bg-black/50 rounded-2xl flex flex-col items-center justify-center text-center px-6">
+                                <h1 className="text-3xl md:text-6xl font-bold text-white mb-4 drop-shadow-lg">
+                                    {slide.title}
+                                </h1>
+                                <p className="text-lg md:text-2xl text-white/90 mb-6 max-w-2xl">
+                                    {slide.desc}
+                                </p>
 
-            <div className="slide-in">
-              <div className="relative">
-                <img
-                  src="/diverse-beautiful-hair-models-collage.jpg"
-                  alt="Beautiful diverse hair styles"
-                  className="rounded-2xl shadow-2xl hover-lift"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-background/20 to-transparent rounded-2xl"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+                                <div className="flex flex-wrap gap-4">
+                                    <Link href="/products">
+                                        <Button
+                                            size="lg"
+                                            className="bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-xl shadow-lg shadow-primary/40 hover:scale-105 transition-transform duration-300"
+                                        >
+                                            Shop Now
+                                        </Button>
+                                    </Link>
+
+                                    <Link href="/salons">
+                                        <Button
+                                            size="lg"
+                                            variant="outline"
+                                            className="border-white text-white hover:bg-white/20 hover:text-white/90 px-8 py-3 rounded-xl backdrop-blur-sm transition-all duration-300"
+                                        >
+                                            Find Salons
+                                        </Button>
+                                    </Link>
+                                </div>
+                            </div>
+
+                        </div>
+                    </SwiperSlide>
+                ))}
+            </Swiper>
+        </section>
 
       {/* Stats Section */}
       <section className="py-16 px-4 bg-card">

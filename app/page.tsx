@@ -72,11 +72,9 @@ export default function HomePage() {
 
 
     const addToCart = async (product: any) => {
-        // always update localStorage first (fast UI feedback)
         const savedCart = localStorage.getItem("cart")
         const cart = savedCart ? JSON.parse(savedCart) : []
 
-        // check if product already exists
         const existing = cart.find((item: any) => item.id === product.id)
         if (existing) {
             existing.quantity += 1
@@ -87,7 +85,6 @@ export default function HomePage() {
         localStorage.setItem("cart", JSON.stringify(cart))
         setCartCount(cart.length)
 
-        // if user is logged in → sync with backend
         if (isAuthenticated) {
             try {
                 await fetch("/api/v1/cart", {

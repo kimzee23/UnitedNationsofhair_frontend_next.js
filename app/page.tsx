@@ -257,7 +257,7 @@ export default function HomePage() {
                     },
                     {
                         id: 2,
-                        src: "/luxury-hair-salon.png",
+                        src: "/beauty-salon.jpg",
                         title: "Top Rated Salons Near You",
                         desc: "Book appointments with trusted professionals.",
                     },
@@ -269,7 +269,7 @@ export default function HomePage() {
                     },
                     {
                         id: 4,
-                        src: "/hair-products.jpg",
+                        src: "/dreamy-aesthetic.jpg",
                         title: "Best hair treatment",
                         desc: "Restores, strengthens, and nourishes hair for a soft, shiny, and healthy look."
                     },

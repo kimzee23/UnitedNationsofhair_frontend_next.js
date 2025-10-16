@@ -40,7 +40,7 @@ export function AuthModal({ isOpen, onClose, initialMode = "signin" }: AuthModal
         otp: "",
     })
 
-    const { login, setTokens } = useAuth()
+    const { login } = useAuth() // Removed setTokens since it doesn't exist
     const router = useRouter()
 
     if (!isOpen) return null
@@ -88,21 +88,6 @@ export function AuthModal({ isOpen, onClose, initialMode = "signin" }: AuthModal
             // Redirect to the social login endpoint
             const socialLoginUrl = `${API_BASE_URL}/api/v1/auth/${provider}/`
             window.location.href = socialLoginUrl
-
-            // Alternatively, if you want to handle it with popup:
-            // const width = 600
-            // const height = 600
-            // const left = (window.innerWidth - width) / 2
-            // const top = (window.innerHeight - height) / 2
-
-            // const popup = window.open(
-            //   socialLoginUrl,
-            //   `${provider}Login`,
-            //   `width=${width},height=${height},top=${top},left=${left}`
-            // )
-
-            // You can add popup message handling here if needed
-
         } catch (error: any) {
             setError(`Failed to start ${provider} login: ${error.message}`)
         } finally {
@@ -147,13 +132,15 @@ export function AuthModal({ isOpen, onClose, initialMode = "signin" }: AuthModal
         setError(null)
         setIsLoading(true)
 
+        // Use the login function from auth context
         const result = await login(formData.email, formData.password)
 
         if (result.success) {
             setSuccess("Login successful!")
             setTimeout(() => {
                 onClose()
-                const userRole = result.data?.role || "customer"
+                // Get user role from the result or default to customer
+                const userRole = (result as any).role || (result as any).data?.role || "customer"
                 router.push(getDashboardPath(userRole))
             }, 1000)
         } else {
@@ -214,16 +201,16 @@ export function AuthModal({ isOpen, onClose, initialMode = "signin" }: AuthModal
         })
 
         if (result.success && result.data) {
-            if (result.data.access && result.data.refresh) {
-                setTokens(result.data.access, result.data.refresh)
-                setSuccess("OTP verified successfully!")
+            // Since setTokens doesn't exist in your auth context, we'll use the login function
+            // or redirect to login page after successful OTP verification
+            setSuccess("OTP verified successfully! You can now sign in.")
 
-                setTimeout(() => {
-                    onClose()
-                    const userRole = result.data?.role || "customer"
-                    router.push(getDashboardPath(userRole))
-                }, 1000)
-            }
+            setTimeout(() => {
+                setMode("signin")
+                setSuccess(null)
+                // Clear OTP fields
+                setFormData(prev => ({ ...prev, otp: "" }))
+            }, 2000)
         } else {
             setError(result.error || "Invalid OTP")
         }
